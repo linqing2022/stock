@@ -8,3 +8,4 @@ df2 = df.corr(method='pearson')
 df2.to_csv(corr_path)
 #df2 = df.open.corr(df.ps_ttm,method='pearson')
 #print(df2)
+
