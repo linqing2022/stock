@@ -14,7 +14,7 @@ thread_count = 1
 def compute(start_index:int,end_index:int) -> None:
     print(start_index,end_index)
     i = start_index
-    while i <= end_index:
+    while i < end_index:
         code = lines[i].strip('\n')
         print(i,code)
         i = i + 1
@@ -52,16 +52,17 @@ def compute(start_index:int,end_index:int) -> None:
         while j <= count_hfq:
             if ((k == count_fina) or (df_hfq.loc[j,'trade_date'] > df_fina.loc[k,'end_date'] and df_hfq.loc[j,'trade_date'] <= df_fina.loc[k + 1,'end_date'])):
                     end_date = str(df_fina.loc[k, 'end_date'])
+                    profit_dedt_k = df_fina.loc[k,'profit_dedt']
                     if ('0331' in end_date):
-                        df_hfq.loc[j,'profit_dedt'] = df_fina.loc[k,'profit_dedt'] * 4 
+                        df_hfq.loc[j,'profit_dedt'] = profit_dedt_k * 4 
                     if ('0630' in end_date):
-                        df_hfq.loc[j,'profit_dedt'] = df_fina.loc[k,'profit_dedt'] * 2 
+                        df_hfq.loc[j,'profit_dedt'] = profit_dedt_k * 2 
                     if ('0930' in end_date):
-                        df_hfq.loc[j,'profit_dedt'] = df_fina.loc[k,'profit_dedt'] * 4 / 3 
+                        df_hfq.loc[j,'profit_dedt'] = profit_dedt_k * 4 / 3 
                     if ('1231' in end_date):
-                        df_hfq.loc[j,'profit_dedt'] = df_fina.loc[k,'profit_dedt']
+                        df_hfq.loc[j,'profit_dedt'] = profit_dedt_k
                     df_hfq.loc[j,'pe_dong'] =  df_hfq.loc[j, 'total_mv'] * 10000 / df_hfq.loc[j,'profit_dedt']
-                    # print(sys._getframe().f_lineno,j,k,df_hfq.loc[j,'trade_date'],df_fina.loc[k,'end_date'],df_fina.loc[k,'profit_dedt'],df_hfq.loc[j,'profit_dedt'])
+                    df_hfq.loc[j,'dt_netprofit_yoy'] = df_fina.loc[k,'dt_netprofit_yoy'] 
                     j = j + 1
             elif (df_hfq.loc[j,'trade_date'] <= df_fina.loc[k,'end_date']):
                     j = j + 1

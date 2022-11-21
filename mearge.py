@@ -11,7 +11,7 @@ import datetime
 # engine_ts = create_engine('mysql://root:Csu123456789!@127.0.0.1:3306/tushare?charset=utf8&use_unicode=1')
 
 dir_path = 'd:\\data\\tushare\\hfq_fina\\'
-all_data_path = 'all.csv'
+all_data_path = 'd:\\data\\all.csv'
 file_cnt = 0
 if (os.path.exists(all_data_path)):
     os.remove(all_data_path)

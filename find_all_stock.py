@@ -19,7 +19,7 @@ buy_price = 0
 sel_price = 0
 buy_index = -1
 dir_path = 'd:\\data\\tushare\\hfq_fina\\'
-all_data_path = 'all.csv'
+all_data_path = 'd:\\data\\all.csv'
 file_cnt = 5000
 pe_dong = 20
 dt_netprofit_yoy = 0
@@ -62,8 +62,8 @@ for i in range(len(df)) :
         #         print(row)
         if (open_price[index] / max_open[index] < down_percent and 
                 buy_price == 0 
-                # and 
-                # pe_dong_i <= pe_dong 
+                and 
+                pe_dong_i <= pe_dong 
                 and
                 pe_dong_i > 0 
                 and
