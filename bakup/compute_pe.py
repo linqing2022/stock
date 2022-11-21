@@ -5,15 +5,15 @@ import pandas as pd
 import os
 import sys
 
-note = open('D:\\code.txt','r')
+note = open('D:\\data\\code.txt','r')
 code_count = note.readlines()
 
 for i in range(len(code_count)):
     code = code_count[i].strip('\n')
     print(i,code)
-    df_hfq =pd.read_csv('.\\tushare\\hfq\\' + code + '.csv',usecols=["ts_code", "trade_date"])
-    df_fina = pd.read_csv('.\\tushare\\fina\\' + code + '.csv',usecols=["end_date","profit_dedt"])
-    df_daily_basic = pd.read_csv('.\\tushare\\daily_basic\\' + code + '.csv',usecols=["trade_date","total_mv"])
+    df_hfq =pd.read_csv('D:\\data\\tushare\\hfq\\' + code + '.csv',usecols=["ts_code", "trade_date"])
+    df_fina = pd.read_csv('D:\\data\\tushare\\fina\\' + code + '.csv',usecols=["end_date","profit_dedt"])
+    df_daily_basic = pd.read_csv('D:\\data\\tushare\\daily_basic\\' + code + '.csv',usecols=["trade_date","total_mv"])
 
     df_hfq = pd.merge(df_hfq,df_daily_basic,on="trade_date")
     count_hfq = len(df_hfq) - 1

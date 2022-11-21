@@ -17,7 +17,7 @@ sales_value = 0
 win_cnt = 0
 loss_cnt = 0
 
-dir_path = '.\\tushare\\hfq_fina\\'
+dir_path = 'd:\\data\\tushare\\hfq_fina\\'
 for root, dirs, files in os.walk(dir_path):
     for fname in files:
         df = pd.read_csv(dir_path + str(fname))

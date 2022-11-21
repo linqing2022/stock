@@ -6,7 +6,7 @@ import os
 import sys
 import threading
 
-note = open('d:\\code.txt','r')
+note = open('D:\\data\\code.txt','r')
 lines = note.readlines()
 code_count = len(lines)
 thread_count = 1
