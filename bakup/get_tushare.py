@@ -24,9 +24,9 @@ mkdir('.\\tushare\\fina\\')
 mkdir('.\\tushare\\hfq_fina\\')
 mkdir('.\\tushare\\daily_basic')
 
-if (os.path.exists('code.txt')):
-    os.remove('code.txt')
-note =  open('code.txt',mode='a')
+if (os.path.exists('D:\\code.txt')):
+    os.remove('D:\\code.txt')
+note =  open('D:\\code.txt',mode='a')
 
 for i in range(len(data)) :
     code = data.loc[i, 'ts_code']

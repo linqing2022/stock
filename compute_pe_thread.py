@@ -6,7 +6,7 @@ import os
 import sys
 import threading
 
-note = open('code.txt','r')
+note = open('d:\\code.txt','r')
 lines = note.readlines()
 code_count = len(lines)
 thread_count = 1
@@ -18,7 +18,6 @@ def compute(start_index:int,end_index:int) -> None:
         code = lines[i].strip('\n')
         print(i,code)
         i = i + 1
-<<<<<<< HEAD
 
         path_hfq = 'd:\\data\\tushare\\hfq\\' + code + '.csv'
         if (os.path.exists(path_hfq)):
@@ -37,11 +36,9 @@ def compute(start_index:int,end_index:int) -> None:
             df_daily_basic =pd.read_csv(path_daily_basic)
         else:
             continue
-=======
-        df_hfq =pd.read_csv('.\\tushare\\hfq\\' + code + '.csv')
-        df_fina = pd.read_csv('.\\tushare\\fina\\' + code + '.csv')
-        df_daily_basic = pd.read_csv('.\\tushare\\daily_basic\\' + code + '.csv')
->>>>>>> parent of 5bdf0c5d (dt_netprofit_yoy)
+        df_hfq =pd.read_csv('d:\\data\\tushare\\hfq\\' + code + '.csv')
+        df_fina = pd.read_csv('d:\\data\\tushare\\fina\\' + code + '.csv')
+        df_daily_basic = pd.read_csv('d:\\data\\tushare\\daily_basic\\' + code + '.csv')
 
         df_hfq = pd.merge(df_hfq,df_daily_basic,on="trade_date")
         count_hfq = len(df_hfq) - 1

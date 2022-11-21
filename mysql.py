@@ -40,9 +40,9 @@ if __name__ == '__main__':
     stock_basic = get_data()
     write_data(stock_basic)
     code_count = len(stock_basic)
-    if (os.path.exists('code.txt')):
-        os.remove('code.txt')
-    note =  open('code.txt',mode='a')
+    if (os.path.exists('D:\\code.txt')):
+        os.remove('D:\\code.txt')
+    note =  open('D:\\code.txt',mode='a')
     for i in range(code_count) :
         code = stock_basic.loc[i, 'ts_code']
         print(i,code)
