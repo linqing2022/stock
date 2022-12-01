@@ -5,7 +5,7 @@ import pandas as pd
 import os
 import sys
 
-note = open('D:\\data\\code.txt','r')
+note = open('D:\\data\\tushare\\code.txt','r')
 code_count = note.readlines()
 
 for i in range(len(code_count)):

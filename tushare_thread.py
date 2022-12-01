@@ -28,9 +28,9 @@ mkdir('d:\\data\\tushare\\fina\\')
 mkdir('d:\\data\\tushare\\hfq_fina\\')
 mkdir('d:\\data\\tushare\\daily_basic')
 
-if (os.path.exists('D:\\data\\code.txt')):
-    os.remove('D:\\data\\code.txt')
-note =  open('D:\\data\\code.txt',mode='a')
+if (os.path.exists('D:\\data\\tushare\\code.txt')):
+    os.remove('D:\\data\\tushare\\code.txt')
+note =  open('D:\\data\\tushare\\code.txt',mode='a')
 
 def get_tushare(start_index:int,end_index:int) -> None:
     print(start_index,end_index)
