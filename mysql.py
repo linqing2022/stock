@@ -14,7 +14,7 @@ import threading
 import sys
 
 thread_count = 4
-note =  open('D:data\config.txt',mode='r')
+note =  open('D:\\data\\config.txt',mode='r')
 lines = note.readlines()
 get_day_count = int(lines[0].strip('\n'))
 print(get_day_count)
