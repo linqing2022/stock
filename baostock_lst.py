@@ -1,38 +1,74 @@
 # -*- coding: utf-8 -*-
+import shutil
+
 import baostock as bs
 import pandas as pd
-import csv
 import os
 from pytdx.hq import TdxHq_API
 import numpy as np
 from datetime import date, timedelta
+import math
+from pytdx.params import TDXParams
+from datetime import datetime
 
+download_start_time = '2015-01-01'
+deal_start_time = '2015-01-01'
 root_path = os.getcwd()
 print(root_path)
-file_path = root_path + "/k_day.csv"
-limit_up_file_path = root_path + "/limit_up.csv"
-
+list_path = root_path + "\\list.csv"
+file_path = root_path + "\\k_day.csv"
+limit_up_file_path = root_path + "\\limit_up.csv"
+trading_day_path = root_path + "\\trading_day.csv"
+deal_path = root_path + "\\deal.csv"
+white_path  = root_path + "\\white.csv"
+# 登录 Baostock 系统
 bs.login()
-stock_df = bs.query_all_stock(date).get_data()
-df = pd.DataFrame(stock_df)
-count = len(df)
-sh_stock = [''] * count
-sz_stock = [''] * count
-all_stock = [''] * count
+
+STOCKNUM = 10000
+sh_stock = [''] * STOCKNUM
+sz_stock = [''] * STOCKNUM
+all_stock = [''] * STOCKNUM
+all_count = 0
 
 api = TdxHq_API()
-
 # 获取今天的日期
-today = date.today()
+today = date.today() - timedelta(days=1)
+
 # 将日期格式化为字符串
 baostock_today = today.strftime("%Y-%m-%d")
 
-money = 0
+head_col = [
+    ['code', 'name', 'buy_date', 'buy_price','sel_date', 'sel_price', 'total_money', 'up_down'],
+]
+deal_df = pd.DataFrame(columns=head_col[0])
+if os.path.exists(deal_path):
+    os.remove(deal_path)
+deal_df.to_csv(deal_path)
+deal_col = 0
+
+def baostock_all_lst():
+    # 获取所有 A 股股票信息
+    rs = bs.query_all_stock(day=baostock_today)
+    # 显示结果集
+    all_stock_list = []
+    while (rs.error_code == '0') & rs.next():
+        # 获取一条记录，将记录合并在一起
+        all_stock_list.append(rs.get_row_data())
+
+    if not all_stock_list:
+        return
+    # 结果转化为 DataFrame 格式
+    all_stock_df = pd.DataFrame(all_stock_list, columns=rs.fields)
+    all_stock_df.to_csv(list_path)
+
 def baostock_lst():
     k = m = n = 0
-    for i in range(count):
+    df = pd.read_csv(list_path)
+    all_count = len(df)
+
+    for i in range(all_count):
         stock_code = df.iloc[i]['code']
-        if ('sh.60' in stock_code):
+        if ('sh.60' in stock_code) or ('sh.68' in stock_code):
             sh_stock[m] = stock_code[-6:]
             all_stock[k] = stock_code
             m += 1
@@ -48,10 +84,14 @@ def baostock_lst():
     return
 
 def baostock_k_day():
-    for i in range(count):
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    df = pd.read_csv(list_path)
+    all_count = len(df)
+    for i in range(all_count):
         rs = bs.query_history_k_data_plus(all_stock[i],
                                      "date,code,open,high,low,close,volume",
-                                     start_date='2023-01-01',
+                                     start_date=download_start_time,
                                      end_date= baostock_today,
                                      frequency="d", adjustflag="2")
 
@@ -78,7 +118,21 @@ def data_clear():
 def insert_col():
     df = pd.read_csv(file_path)
     df['limit_up_count'] = 0
+    df['limit_up_turnover_count'] = 0
+    df['white'] = 0
     df.to_csv(file_path, index=False)
+
+def is_limit_up(old_price, new_price, precent):
+        old_price = math.floor(float(old_price) * 100) / 100
+        old_price = f"{old_price:.2f}"
+        price_trim = float(old_price) * float(precent)
+        price_trim = math.floor(price_trim * 100) / 100
+        price_trim = f"{price_trim:.2f}"
+        new_price = f"{new_price:.2f}"
+        if float(price_trim) <= float(new_price):
+            return 1
+        else :
+            return 0
 
 def count_limit_up():
     df = pd.read_csv(file_path)
@@ -87,31 +141,42 @@ def count_limit_up():
     old_code = df.iloc[0]['code']
     old_date = df.iloc[0]['date']
     old_close = float(df.iloc[0]['close'])
-
+    limit_up_count = 0
+    limit_up_turnover_count = 0
     while i < count_csv:
         new_code = df.iloc[i]['code']
         new_date = df.iloc[i]['date']
         new_close = float(df.iloc[i]['close'])
-
+        new_open = float(df.iloc[i]['open'])
         if (new_code != old_code) :
             old_code = df.iloc[i]['code']
             old_date = df.iloc[i]['date']
             old_close = float(df.iloc[i]['close'])
-        change_percent = (new_close - old_close) / old_close * 100
-        if ('sz.30' in new_code):
-            precent = 20
+        if ('sz.30' in new_code) or ('sh.68' in new_code):
+            precent = 1.2
         else :
-            precent = 10
-        if change_percent >= precent:
-            limit_up_count = int(df.iloc[i]['limit_up_count'])
+            precent = 1.1
+        old_close = math.floor(float(old_close) * 100) / 100
+        old_close = f"{old_close:.2f}"
+        price_trim = float(old_close) * float(precent)
+        price_trim = math.floor(price_trim * 100) / 100
+        price_trim = f"{price_trim:.2f}"
+        new_close = f"{new_close:.2f}"
+        new_open = f"{new_open:.2f}"
+        if float(price_trim) <= float(new_close):
             limit_up_count += 1
+            if float(price_trim) > float(new_open):
+                limit_up_turnover_count += 1
             df.at[i, 'limit_up_count'] = limit_up_count
+            df.at[i, 'limit_up_turnover_count'] = limit_up_turnover_count
+           
         else :
             limit_up_count = 0
-        i += 1
+            limit_up_turnover_count = 0
         old_code = new_code
         old_date = new_date
-        old_close = new_close
+        old_close = float(df.iloc[i]['close'])
+        i += 1
     df.to_csv(limit_up_file_path, index=False)
 
 def save_limit_up():
@@ -124,105 +189,269 @@ def save_limit_up():
 
 def sort_by_date_limit_up_count():
     df = pd.read_csv(limit_up_file_path)
-    df = df.sort_values(by=['date', 'limit_up_count'], ascending=[True, False])
+    df = df.sort_values(by=['date', 'limit_up_count', 'limit_up_turnover_count'], ascending=[True, False, False])
     df.to_csv(limit_up_file_path, index=False)
 
-def download_detail_day(pytdx_today):
+def limit_up_add_name():
     df = pd.read_csv(limit_up_file_path)
-    detail_file_path = root_path + "/" + pytdx_today + "/detail.csv"
+    list_df = pd.read_csv(list_path)
+    df['code_name'] = ''
+    for i in range(len(df)):
+        j = list_df.loc[list_df['code'] == df.iloc[i]['code']].index.tolist()
+        if j[0] >= len(df):
+            break
+        df.at[i, 'code_name'] = list_df.loc[j[0], 'code_name']
+    df.to_csv(limit_up_file_path)
+
+def white_list():
+    df = pd.read_csv(limit_up_file_path)
+    old_date = df.loc[0]['date']
+    j = 0
+    highest = df.loc[0]['limit_up_count']
+    df.at[0, 'white'] = 1
+    i = 1
+    while i < len(df):
+        new_date = df.loc[i]['date']
+        if (new_date != old_date) :
+            old_date = new_date
+            j += 1
+            df.at[i, 'white'] = 1
+            highest = df.loc[i]['limit_up_count']
+            continue
+        if (highest == df.loc[i]['limit_up_count']):
+            df.at[i ,'white'] = 1
+        i += 1
+    df = df[df['white'] != 0]
+    df.to_csv(limit_up_file_path, index=False)
+    
+def download_detail_day(pytdx_today,code):
+    detail_file_path = root_path + "\\detail\\" + pytdx_today
     if not os.path.exists(detail_file_path):
         os.makedirs(detail_file_path)
-    with api.connect('119.147.212.81', 7709):
-        for i in range(len(df)) :
-            code = df.iloc[i]['code']
-            if ('sz' in new_code):
-                market = 0
-            else:
-                market = 1
-            for j in range(5):
-                df = api.get_history_transaction_data(market, code, j * 1000, 1000, pytdx_today)
-                df['date'] = pytdx_today
-                df.to_csv(detail_file_path, mode='a', index=False)
+        new_path = 1
+    else :
+        new_path = 0
+
+    detail_file_path = detail_file_path + "\\detail.csv"
+    pytdx_today = int(pytdx_today)
+    if ('sz' in code):
+        market = 0
+    else:
+        market = 1
+    j = 5
+    code = code[-6:]
+    while j >= 0:
+        detail_df = api.to_df(api.get_history_transaction_data(market, code, j * 1000, 1000, pytdx_today))
+        if len(detail_df) > 1:
+            detail_df['date'] = pytdx_today
+            detail_df['code'] = code
+            if (new_path == 1) :
+                detail_df.to_csv(detail_file_path, mode='a', index=False)
+                new_path = 0
+            else :
+                detail_df.to_csv(detail_file_path, mode='a', index=False, header=False)
+        j-=1
+
+def trade_dates():
+    start_date = download_start_time
+    end_date = baostock_today
+    rs = bs.query_trade_dates(start_date=start_date, end_date=end_date)
+    # 解析结果
+    data_list = []
+    while (rs.error_code == '0') & rs.next():
+        data_list.append(rs.get_row_data())
+
+    result = pd.DataFrame(data_list, columns=rs.fields)
+    result = result[result['is_trading_day'] != '0']
+    result.reset_index()
+    result.to_csv(trading_day_path)
+
+def get_directory_names(path):
+    # 获取指定路径下的所有文件和目录
+    entries = os.listdir(path)
+    # 过滤出只有目录的名称
+    directories = [entry for entry in entries if os.path.isdir(os.path.join(path, entry))]
+    return directories
 
 def download_detail():
-    today = date.today()
-    delta = today - date(20230101)
-    pytdx_today = today.strftime("%Y%m%d")
-    for i in range(delta):
-        download_detail_day(pytdx_today)
-        today = today - timedelta(days=1)
+    trade_dates()
+    detail_file_path = root_path + "\\detail\\"
+    directories = get_directory_names(detail_file_path)
+    chars_to_remove = "-"
+    # 使用列表推导式过滤掉不需要的字符
+    filtered_chars = [char for char in download_start_time if char not in chars_to_remove]
+    # 将列表转换回字符串
+    remove_start_date = ''.join(filtered_chars)
+    for i in range(len(directories)):
+        if(directories[i] >= remove_start_date):
+            tmp_path = detail_file_path + directories[i]
+            shutil.rmtree(tmp_path)
+
+    result = pd.read_csv(trading_day_path)
+    df = pd.read_csv(limit_up_file_path)
+    i = 0
+    for i in range(len(df)):
+        pytdx_today = df.iloc[i]['date']
+        if (pytdx_today >= download_start_time):
+            break
+
+    with api.connect('119.147.212.81', 7709):
+        while i < len(df):
+            code = df.iloc[i]['code']
+            pytdx_today = df.iloc[i]['date']
+            j = result.loc[result['calendar_date'] == pytdx_today].index.tolist()
+            pytdx_today = result.loc[j[0], 'calendar_date']
+            pytdx_today = datetime.strptime(pytdx_today, "%Y-%m-%d")
+            pytdx_today = pytdx_today.strftime("%Y%m%d")
+            download_detail_day(pytdx_today,code)
+            i+=1
 
 def spilt_k_day_by_code():
+    split_file_path = root_path + "\\spilt\\"
+    if not os.path.exists(split_file_path):
+        os.makedirs(split_file_path)
     df = pd.read_csv(file_path)
     count = len(df)
-
-    new_df = pd.DataFrame()
-    new_df['date'] = 'date'
-    new_df['open'] = 'open'
-    new_df['close'] = 'close'
-    new_df['high'] = 'high'
-    new_df['low'] = 'low'
-    new_df.iloc[0]['date'] = df.iloc[0]['date']
-    new_df.iloc[0]['open'] = df.iloc[0]['open']
-    new_df.iloc[0]['close'] = df.iloc[0]['close']
-    new_df.iloc[0]['high'] = df.iloc[0]['high']
-    new_df.iloc[0]['low'] = df.iloc[0]['low']
-
     old_code = df.iloc[0]['code']
-    j = i = 0
+    i = 1
+    j = 0
     while i < count:
-        new_code = df.iloc[i+1]['code']
-        new_df.iloc[j]['date'] = df.iloc[i]['date']
-        new_df.iloc[j]['open'] = df.iloc[i]['open']
-        new_df.iloc[j]['close'] = df.iloc[i]['close']
-        new_df.iloc[j]['high'] = df.iloc[i]['high']
-        new_df.iloc[j]['low'] = df.iloc[i]['low']
-
+        new_code = df.iloc[i]['code']
+        new_df= df.iloc[i].copy()
         if (old_code != new_code):
-            new_path = file_path + "/" + old_code + "k_day.csv"
+            new_df = df.iloc[j:i-1].copy()
+            new_path = split_file_path + old_code + "_k_day.csv"
             new_df.to_csv(new_path)
             old_code = new_code
-            j = 0
+            j = i
         i+=1
-        j+=1
 
-def deal_day(day,start_row):
+total_money = 10000
+
+# 昨天最高板的几个股票；选择今天开盘不涨停又最快盘中涨停的买入；
+# 今天收盘不涨停，直接卖出；今天收盘涨停，继续持有，直到某天开盘跌或盘中不涨后卖出
+def deal_code_1(code,name,date,old_close,start_row):
+    global total_money
+    global deal_col 
+    split_file_path = root_path + "\\spilt\\"
+    k_day_path = split_file_path + code + "_k_day.csv"
+    k_day_df = pd.read_csv(k_day_path)
+    for i in range(len(k_day_df)):
+        now_date = k_day_df.iloc[i]['date']
+        if (date == now_date):
+            break
+    if i == len(k_day_df) -1:
+        return date
+    if ('sz.30' in code) or ('sh.68' in code):
+            precent = 1.2
+    else :
+            precent = 1.1
+    open = k_day_df.iloc[i+1]['open']
+    buy_date = k_day_df.iloc[i+1]['date']
+    limit_flag = is_limit_up(old_close,open,precent)
+    high = k_day_df.iloc[i+1]['high']
+    high_limit_flag = is_limit_up(old_close, high, precent)
+    if limit_flag == 0 and high_limit_flag == 1:
+        old_money = total_money
+        buy_price = open
+        j = 0
+        while i+j+2 < len(k_day_df):    
+            old_close = k_day_df.iloc[i+j]['close']
+            buy_close = k_day_df.iloc[i+j+1]['close']
+            sel = k_day_df.iloc[i + j]['close']
+            sel_date = k_day_df.iloc[i+j+1]['date']
+            limit_flag = is_limit_up(old_close,buy_close,precent)
+            if limit_flag == 0:
+                if j > 0 :
+                    sel_price = sel
+                else :
+                    sel_price = k_day_df.iloc[i+j+2]['open']
+                    sel_date = k_day_df.iloc[i+j+2]['date']
+                total_money *= sel_price / buy_price
+                total_money = int(total_money)
+                up_down = ((total_money - old_money) / old_money) * 100
+                up_down = int(up_down)
+                str = f"{code},{name},{buy_date},{buy_price},{sel_date},{sel_price},{total_money},{up_down}%"
+                print(str)
+                deal_df.at[deal_col,'code'] = code
+                deal_df.at[deal_col,'name'] = name
+                deal_df.at[deal_col,'buy_date'] = buy_date
+                deal_df.at[deal_col,'buy_price'] = buy_price
+                deal_df.at[deal_col,'sel_date'] = sel_date
+                deal_df.at[deal_col,'sel_price'] = sel_price
+                deal_df.at[deal_col,'total_money'] = total_money
+                deal_df.at[deal_col,'up_down'] = up_down
+                deal_col += 1
+                return sel_date  
+            j +=1
+    return buy_date
+
+def deal_day(start_row):
     limit_up_df = pd.read_csv(limit_up_file_path)
     count = len(limit_up_df)
     old_date = limit_up_df.iloc[start_row]['date']
     old_close = limit_up_df.iloc[start_row]['close']
     code = limit_up_df.iloc[start_row]['code']
-    new_path = file_path + "/" + code + "k_day.csv"
-    # print("buy price:" {})
-    i = 1
-    start_day = day + timedelta(days=1)
+    name = limit_up_df.iloc[start_row]['code_name']
+    deal_date = deal_code_1(code,name,old_date,old_close,start_row)
+
     while start_row < count:
-        new_date = limit_up_df.iloc[i]['date']
-        if (old_date != new_date) :
-            return i;
+        new_date = limit_up_df.iloc[start_row]['date']
+        if (deal_date <= new_date) :
+            return start_row
         start_row += 1
+    return start_row
 
-
-def deal():
-    start_day = date(20230101)
+def stock_deal():
+    year  = int(deal_start_time[0:4])
+    month = int(deal_start_time[5:7])
+    day = int(deal_start_time[8:10])
+    start_day = date(year,month,day)
     end_day = date.today()
     delta = end_day - start_day
+    limit_up_df = pd.read_csv(limit_up_file_path)
     start_row = 0
-    for i in range(delta):
-        start_row = deal_day(start_day,start_row)
-        start_day = start_day + timedelta(days=1)
+    count = len(limit_up_df)
+
+    for i in range(count):
+        now_date = limit_up_df.iloc[i]['date']
+        if (deal_start_time <= now_date):
+            start_row = i
+            break
+
+    for i in range(delta.days):
+        if start_row >= count:
+            return
+        start_row = deal_day(start_row)
+    deal_df.to_csv(deal_path,index=False)
+
+def prepare_k_day():
+    baostock_all_lst()
+    baostock_lst()
+    baostock_k_day()
+    data_clear()
+    spilt_k_day_by_code()
+
+def deal_limit_up():
+    insert_col()
+    count_limit_up()
+    save_limit_up()
+    sort_by_date_limit_up_count()
+    limit_up_add_name()
+    white_list()
 
 if __name__ == "__main__":
-    # baostock_lst()
-    # baostock_k_day()
-    # data_clear()
-    # insert_col()
-    # count_limit_up()
-    save_limit_up()
-    # sort_by_date_limit_up_count()
-    # download_detail()
-    # spilt_k_day_by_code()
-    # deal()
+    #准备股票原始k线数据
+    # prepare_k_day()
+
+    #计算涨停股票
+    # deal_limit_up()
+
+    #下载涨停股票的下一日交易明细
+    download_detail()
+
+    #交易策略
+    stock_deal()
 
 
 
